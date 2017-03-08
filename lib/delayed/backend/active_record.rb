@@ -97,7 +97,7 @@ module Delayed
             # use 'FOR UPDATE' and we would have many locking conflicts
             quoted_table_name = connection.quote_table_name(table_name)
             subquery_sql      = ready_scope.limit(1).lock(true).select("id").to_sql
-            reserved          = find_by_sql(["UPDATE #{quoted_table_name} SET locked_at = ?, locked_by = ? WHERE id IN (#{subquery_sql}) RETURNING *", now, worker.name])
+            reserved          = find_by_sql(["UPDATE #{quoted_table_name} SET locked_at = ?, locked_by = ? WHERE id IN (#{subquery_sql} skip locked) RETURNING *", now, worker.name])
             reserved[0]
           when "MySQL", "Mysql2"
             # Removing the millisecond precision from now(time object)
