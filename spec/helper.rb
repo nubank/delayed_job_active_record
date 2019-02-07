@@ -1,10 +1,12 @@
 require "simplecov"
 require "coveralls"
 
-SimpleCov.formatter = SimpleCov::Formatter::MultiFormatter.new([
-  SimpleCov::Formatter::HTMLFormatter,
-  Coveralls::SimpleCov::Formatter
-])
+SimpleCov.formatter = SimpleCov::Formatter::MultiFormatter.new(
+  [
+    SimpleCov::Formatter::HTMLFormatter,
+    Coveralls::SimpleCov::Formatter
+  ]
+)
 
 SimpleCov.start do
   add_filter "/spec/"
@@ -24,7 +26,8 @@ require "delayed/backend/shared_spec"
 Delayed::Worker.logger = Logger.new("/tmp/dj.log")
 ENV["RAILS_ENV"] = "test"
 
-db_adapter, gemfile = ENV["ADAPTER"], ENV["BUNDLE_GEMFILE"]
+db_adapter = ENV["ADAPTER"]
+gemfile = ENV["BUNDLE_GEMFILE"]
 db_adapter ||= gemfile && gemfile[%r{gemfiles/(.*?)/}] && $1 # rubocop:disable PerlBackrefs
 db_adapter ||= "sqlite3"
 
@@ -33,7 +36,25 @@ ActiveRecord::Base.establish_connection config[db_adapter]
 ActiveRecord::Base.logger = Delayed::Worker.logger
 ActiveRecord::Migration.verbose = false
 
-require "generators/delayed_job/templates/migration"
+migration_template = File.open("lib/generators/delayed_job/templates/migration.rb")
+
+# need to eval the template with the migration_version intact
+migration_context =
+  Class.new do
+    def my_binding
+      binding
+    end
+
+    private
+
+    def migration_version
+      "[#{ActiveRecord::VERSION::MAJOR}.#{ActiveRecord::VERSION::MINOR}]" if ActiveRecord::VERSION::MAJOR >= 5
+    end
+  end
+
+migration_ruby = ERB.new(migration_template.read).result(migration_context.new.my_binding)
+eval(migration_ruby) # rubocop:disable Security/Eval
+
 ActiveRecord::Schema.define do
   CreateDelayedJobs.up
 
@@ -54,8 +75,8 @@ class Story < ActiveRecord::Base
     text
   end
 
-  def whatever(n, _)
-    tell * n
+  def whatever(number)
+    tell * number
   end
   default_scope { where(scoped: true) }
 
