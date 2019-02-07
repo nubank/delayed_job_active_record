@@ -1,3 +1,11 @@
+JUNTOS:
+
+The Juntos fork maintains the master branch to only take updates from the origin repo. For instructions on updating master from collectiveidea, see [How do I update a GitHub forked repository?](https://stackoverflow.com/questions/7244321/how-do-i-update-a-github-forked-repository)
+
+The branch juntos_master is used as our production branch. To make Juntos changes, branch from juntos_master and do a pull request with a hacked URL like:  https://github.com/JuntosFinanzas/delayed_job_active_record/compare/master...<dev_branch>?expand=1
+
+Mercury Gemfile is set up to use the juntos_master branch. We should never merge from juntos_master to master. Master sould always match collectiveidea and when we take updates from them, we need to then manually merge from our master to juntos_master.
+
 **If you're viewing this at https://github.com/collectiveidea/delayed_job_active_record,
 you're reading the documentation for the master branch.
 [View documentation for the latest release
