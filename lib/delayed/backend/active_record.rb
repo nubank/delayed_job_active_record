@@ -122,6 +122,13 @@ module Delayed
           end
         end
 
+        # Juntos: Nik introduced use of "skip locked" below in March 2017 (see commit 335c601167a5eef9ff85a6e5f508328cdfb2c9ee)
+        # This resolves a blocking issue where two worker servers would try to pull the top delayed job at the same time and one would
+        # succeed and the second would block. The "skip locked" feature was introduced by Postgres at version 9.5 and it causes the
+        # second query to skip the top record if it is locked and automatically go to the next record - all in the same SQL call.
+        # This is a very significant improvement where there are a group of worker servers and the blocked call count increases.
+        # An attempt was made to give this change back to collectiveidea, authors of delayed_job_active_record, but they do not do
+        # version-conditionalized code and won't take the change until they no longer support Postgers versions earlier than 9.5
         def self.reserve_with_scope_using_optimized_postgres(ready_scope, worker, now)
           # Custom SQL required for PostgreSQL because postgres does not support UPDATE...LIMIT
           # This locks the single record 'FOR UPDATE' in the subquery
@@ -131,7 +138,7 @@ module Delayed
           # use 'FOR UPDATE' and we would have many locking conflicts
           quoted_name = connection.quote_table_name(table_name)
           subquery    = ready_scope.limit(1).lock(true).select("id").to_sql
-          sql         = "UPDATE #{quoted_name} SET locked_at = ?, locked_by = ? WHERE id IN (#{subquery}) RETURNING *"
+          sql         = "UPDATE #{quoted_name} SET locked_at = ?, locked_by = ? WHERE id IN (#{subquery} skip locked) RETURNING *"
           reserved    = find_by_sql([sql, now, worker.name])
           reserved[0]
         end
